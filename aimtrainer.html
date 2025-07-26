@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Aim Trainer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900@display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Orbitron', monospace;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e);
+            overflow: hidden;
+            cursor: none;
+            user-select: none;
+        }
+        
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+        
+        @keyframes backgroundShift {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(2deg); }
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 40px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+        }
+        
+        .hud-item {
+            color: #00ff88;
+            font-weight: 700;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px #00ff88;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .hud-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            color: #66ffaa;
+        }
+        
+        .game-area {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .target {
+            position: absolute;
+            border-radius: 50%;
+            cursor: crosshair;
+            transition: all 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            background: radial-gradient(circle, #ff006e, #8338ec, #3a86ff);
+            box-shadow: 
+                0 0 20px rgba(255, 0, 110, 0.6),
+                0 0 40px rgba(255, 0, 110, 0.3),
+                inset 0 0 20px rgba(255, 255, 255, 0.1);
+            animation: targetPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes targetPulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 
+                    0 0 20px rgba(255, 0, 110, 0.6),
+                    0 0 40px rgba(255, 0, 110, 0.3),
+                    inset 0 0 20px rgba(255, 255, 255, 0.1);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 
+                    0 0 30px rgba(255, 0, 110, 0.8),
+                    0 0 60px rgba(255, 0, 110, 0.4),
+                    inset 0 0 30px rgba(255, 255, 255, 0.2);
+            }
+        }
+        
+        .target:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+        
+        .crosshair {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+        }
+        
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: #00ff88;
+            box-shadow: 0 0 5px #00ff88;
+        }
+        
+        .crosshair::before {
+            width: 2px;
+            height: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .crosshair::after {
+            width: 30px;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .hit-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.8) 0%, transparent 70%);
+            pointer-events: none;
+            animation: hitExplosion 0.5s ease-out forwards;
+        }
+        
+        @keyframes hitExplosion {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3) rotate(180deg);
+                opacity: 0;
+            }
+        }
+        
+        .miss-effect {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 3px solid #ff3366;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: missRipple 0.6s ease-out forwards;
+        }
+        
+        @keyframes missRipple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ff88;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFloat 2s ease-out forwards;
+        }
+        
+        @keyframes particleFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) translateY(-100px);
+            }
+        }
+        
+        .menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        
+        .menu h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00ff88, #00ddff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+        
+        .menu button {
+            background: linear-gradient(45deg, #00ff88, #00ddff);
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            color: black;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+        
+        .menu button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.5);
+        }
+        
+        .score-popup {
+            position: absolute;
+            color: #00ff88;
+            font-weight: 700;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 150;
+            text-shadow: 0 0 10px #00ff88;
+            animation: scoreFloat 1s ease-out forwards;
+        }
+        
+        @keyframes scoreFloat {
+            0% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.5) translateY(-50px);
+            }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .accuracy-ring {
+            position: absolute;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%);
+            width: 80px;
+            height: 80px;
+        }
+        
+        .ring-bg {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, #00ff88 0deg, #00ff88 var(--accuracy-deg, 0deg), rgba(255,255,255,0.1) var(--accuracy-deg, 0deg));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .ring-bg::before {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 50%;
+        }
+        
+        .ring-text {
+            position: absolute;
+            color: #00ff88;
+            font-weight: 700;
+            font-size: 0.9rem;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="background"></div>
+    <div class="crosshair"></div>
+    
+    <div class="game-container">
+        <div class="hud">
+            <div class="hud-item">
+                <div class="hud-label">SCORE</div>
+                <div id="score">0</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">TIME</div>
+                <div id="timer">30</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">TARGETS HIT</div>
+                <div id="hits">0</div>
+            </div>
+            <div class="accuracy-ring">
+                <div class="ring-bg">
+                    <div class="ring-text" id="accuracy">100%</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="game-area" id="gameArea"></div>
+        
+        <div class="menu" id="menu">
+            <h1>NEON AIM</h1>
+            <p style="margin-bottom: 30px; color: #aaa;">Test your reflexes in this futuristic aim trainer</p>
+            <button onclick="startGame()">START GAME</button>
+            <button onclick="showSettings()">SETTINGS</button>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            score: 0,
+            hits: 0,
+            shots: 0,
+            timeLeft: 30,
+            gameActive: false,
+            targets: [],
+            gameTimer: null,
+            targetSpawnTimer: null
+        };
+
+        const crosshair = document.querySelector('.crosshair');
+        const gameArea = document.getElementById('gameArea');
+        const menu = document.getElementById('menu');
+
+        // Custom crosshair
+        document.addEventListener('mousemove', (e) => {
+            crosshair.style.left = e.clientX + 'px';
+            crosshair.style.top = e.clientY + 'px';
+        });
+
+        // Game click handler
+        gameArea.addEventListener('click', (e) => {
+            if (!gameState.gameActive) return;
+            
+            gameState.shots++;
+            updateAccuracy();
+            
+            const clickedTarget = e.target.closest('.target');
+            if (clickedTarget) {
+                hitTarget(clickedTarget, e);
+            } else {
+                missShot(e);
+            }
+        });
+
+        function startGame() {
+            menu.classList.add('hidden');
+            gameState = {
+                score: 0,
+                hits: 0,
+                shots: 0,
+                timeLeft: 30,
+                gameActive: true,
+                targets: []
+            };
+            
+            updateHUD();
+            spawnTarget();
+            
+            gameState.gameTimer = setInterval(updateTimer, 1000);
+            gameState.targetSpawnTimer = setInterval(spawnTarget, 1200);
+        }
+
+        function endGame() {
+            gameState.gameActive = false;
+            clearInterval(gameState.gameTimer);
+            clearInterval(gameState.targetSpawnTimer);
+            
+            // Clear all targets
+            document.querySelectorAll('.target').forEach(target => target.remove());
+            
+            // Show results
+            const accuracy = gameState.shots > 0 ? Math.round((gameState.hits / gameState.shots) * 100) : 0;
+            menu.innerHTML = `
+                <h1>GAME OVER</h1>
+                <div style="margin: 20px 0; color: #00ff88; font-size: 1.2rem;">
+                    <div>Final Score: ${gameState.score}</div>
+                    <div>Targets Hit: ${gameState.hits}</div>
+                    <div>Accuracy: ${accuracy}%</div>
+                </div>
+                <button onclick="startGame()">PLAY AGAIN</button>
+                <button onclick="showMenu()">MAIN MENU</button>
+            `;
+            menu.classList.remove('hidden');
+        }
+
+        function showMenu() {
+            menu.innerHTML = `
+                <h1>NEON AIM</h1>
+                <p style="margin-bottom: 30px; color: #aaa;">Test your reflexes in this futuristic aim trainer</p>
+                <button onclick="startGame()">START GAME</button>
+                <button onclick="showSettings()">SETTINGS</button>
+            `;
+        }
+
+        function showSettings() {
+            menu.innerHTML = `
+                <h1>SETTINGS</h1>
+                <p style="color: #aaa; margin-bottom: 20px;">More settings coming soon!</p>
+                <button onclick="showMenu()">BACK</button>
+            `;
+        }
+
+        function spawnTarget() {
+            if (!gameState.gameActive) return;
+            
+            const target = document.createElement('div');
+            target.className = 'target';
+            
+            const size = Math.random() * 40 + 40; // 40-80px
+            target.style.width = size + 'px';
+            target.style.height = size + 'px';
+            
+            const maxX = window.innerWidth - size - 50;
+            const maxY = window.innerHeight - size - 150;
+            
+            target.style.left = Math.random() * maxX + 25 + 'px';
+            target.style.top = Math.random() * maxY + 100 + 'px';
+            
+            gameArea.appendChild(target);
+            gameState.targets.push(target);
+            
+            // Auto-remove target after 3 seconds
+            setTimeout(() => {
+                if (target.parentNode) {
+                    target.remove();
+                    gameState.targets = gameState.targets.filter(t => t !== target);
+                }
+            }, 3000);
+        }
+
+        function hitTarget(target, event) {
+            gameState.hits++;
+            const baseScore = 100;
+            const sizeBonus = Math.round((100 - parseInt(target.style.width)) / 2);
+            const score = Math.max(baseScore + sizeBonus, 50);
+            
+            gameState.score += score;
+            
+            // Hit effect
+            createHitEffect(event.clientX, event.clientY);
+            createScorePopup(event.clientX, event.clientY, '+' + score);
+            createParticles(event.clientX, event.clientY);
+            
+            target.remove();
+            gameState.targets = gameState.targets.filter(t => t !== target);
+            updateHUD();
+        }
+
+        function missShot(event) {
+            createMissEffect(event.clientX, event.clientY);
+        }
+
+        function createHitEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'hit-effect';
+            effect.style.left = (x - 50) + 'px';
+            effect.style.top = (y - 50) + 'px';
+            document.body.appendChild(effect);
+            
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function createMissEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'miss-effect';
+            effect.style.left = (x - 25) + 'px';
+            effect.style.top = (y - 25) + 'px';
+            document.body.appendChild(effect);
+            
+            setTimeout(() => effect.remove(), 600);
+        }
+
+        function createScorePopup(x, y, text) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = text;
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            document.body.appendChild(popup);
+            
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function createParticles(x, y) {
+            for (let i = 0; i < 6; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + (Math.random() - 0.5) * 20 + 'px';
+                particle.style.top = y + (Math.random() - 0.5) * 20 + 'px';
+                particle.style.animationDelay = Math.random() * 0.2 + 's';
+                document.body.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 2000);
+            }
+        }
+
+        function updateTimer() {
+            gameState.timeLeft--;
+            if (gameState.timeLeft <= 0) {
+                endGame();
+            }
+            updateHUD();
+        }
+
+        function updateHUD() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('timer').textContent = gameState.timeLeft;
+            document.getElementById('hits').textContent = gameState.hits;
+            updateAccuracy();
+        }
+
+        function updateAccuracy() {
+            const accuracy = gameState.shots > 0 ? Math.round((gameState.hits / gameState.shots) * 100) : 100;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            
+            const ring = document.querySelector('.ring-bg');
+            ring.style.setProperty('--accuracy-deg', (accuracy * 3.6) + 'deg');
+        }
+
+        // Prevent context menu
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
